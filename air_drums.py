@@ -99,8 +99,6 @@ def play_Ride(volume):
     Ride_music.play()
 
 
-
-
 def check_strike(HiHat_mask, Snare_mask, Tom_mask, Ride_mask):
     if np.sum(HiHat_mask) > rectangle_dimensions[0] * rectangle_dimensions[1] * 0.7:
         play_HiHat(0.8)
@@ -122,6 +120,22 @@ while(True):
     check_strike(HiHat_mask, Snare_mask, Tom_mask, Ride_mask)
 
 
+    #########################3
+    contours = cv2.findContours(HiHat_mask, 0, 2)
+
+    c = contours[0]
+    M = cv2.moments(c)
+    if (M['m00'] != 0):
+        cx = int(M['m10']/M['m00'])
+        cy = int(M['m01']/M['m00'])
+        cx = cx + Hihat_edges_pt1[0]
+        cy = cy + Hihat_edges_pt1[1]
+
+        cv2.circle(frame, (cx,cy), 10, (0, 255, 0),thickness=1, lineType=8, shift=0)
+
+    #######################
+
+    
     # Display the resulting frame
     cv2.imshow('air-drums',frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
