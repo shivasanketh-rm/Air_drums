@@ -26,6 +26,7 @@ Tom5_centre = (400, 400)
 Ride_centre = (550, 300)
 
 rectangle_dimensions = (100, 100)
+extended_rectangle_dimensions = (125, 125)
 Hihat_edges_pt1 = (int(Hihat_centre[0] - rectangle_dimensions[0]/2), int(Hihat_centre[1] - rectangle_dimensions[1]/2))
 Hihat_edges_pt2 = (int(Hihat_centre[0] + rectangle_dimensions[0]/2), int(Hihat_centre[1] + rectangle_dimensions[1]/2))
 
@@ -37,6 +38,19 @@ Tom5_edges_pt2 = (int(Tom5_centre[0] + rectangle_dimensions[0]/2), int(Tom5_cent
 
 Ride_edges_pt1 = (int(Ride_centre[0] - rectangle_dimensions[0]/2), int(Ride_centre[1] - rectangle_dimensions[1]/2))
 Ride_edges_pt2 = (int(Ride_centre[0] + rectangle_dimensions[0]/2), int(Ride_centre[1] + rectangle_dimensions[1]/2))
+
+########################################################################################
+extended_Hihat_edges_pt1 = (int(Hihat_centre[0] - extended_rectangle_dimensions[0]/2), int(Hihat_centre[1] - extended_rectangle_dimensions[1]/2))
+extended_Hihat_edges_pt2 = (int(Hihat_centre[0] + extended_rectangle_dimensions[0]/2), int(Hihat_centre[1] + extended_rectangle_dimensions[1]/2))
+
+extended_Snare_edges_pt1 = (int(Snare_centre[0] - extended_rectangle_dimensions[0]/2), int(Snare_centre[1] - extended_rectangle_dimensions[1]/2))
+extended_Snare_edges_pt2 = (int(Snare_centre[0] + extended_rectangle_dimensions[0]/2), int(Snare_centre[1] + extended_rectangle_dimensions[1]/2))
+
+extended_Tom5_edges_pt1 = (int(Tom5_centre[0] - extended_rectangle_dimensions[0]/2), int(Tom5_centre[1] - extended_rectangle_dimensions[1]/2))
+extended_Tom5_edges_pt2 = (int(Tom5_centre[0] + extended_rectangle_dimensions[0]/2), int(Tom5_centre[1] + extended_rectangle_dimensions[1]/2))
+
+extended_Ride_edges_pt1 = (int(Ride_centre[0] - extended_rectangle_dimensions[0]/2), int(Ride_centre[1] - extended_rectangle_dimensions[1]/2))
+extended_Ride_edges_pt2 = (int(Ride_centre[0] + extended_rectangle_dimensions[0]/2), int(Ride_centre[1] + extended_rectangle_dimensions[1]/2))
 
 def draw_rectangles(frame):
     cv2.rectangle(frame, Hihat_edges_pt1, Hihat_edges_pt2, (0,255,0), thickness=1, lineType=8, shift=0 )
@@ -62,10 +76,13 @@ def draw_instruments(frame):
 lower_blue = np.array([110,50,50])
 upper_blue = np.array([130,255,255])
 
+blueLower = (80,150,10)
+blueUpper = (120,255,255)
+
 def find_range(range_frame):
     hsv = cv2.cvtColor(range_frame, cv2.COLOR_BGR2HSV)
     
-    mask = cv2.inRange(hsv, lower_blue, upper_blue)
+    mask = cv2.inRange(hsv, blueLower, blueUpper)
 
     return mask
 
@@ -98,16 +115,38 @@ def play_Ride(volume):
     Ride_music.set_volume(volume)
     Ride_music.play()
 
+currently_struck = False
 
 def check_strike(HiHat_mask, Snare_mask, Tom_mask, Ride_mask):
+    global currently_struck
     if np.sum(HiHat_mask) > rectangle_dimensions[0] * rectangle_dimensions[1] * 0.7:
-        play_HiHat(0.8)
+        if currently_struck == True:
+            print("passing HiHat")
+            pass
+        else:
+            play_HiHat(0.8)
+            currently_struck = True
+    else:
+        currently_struck = False
     if np.sum(Snare_mask) > rectangle_dimensions[0] * rectangle_dimensions[1] * 0.7:
         play_Snare(0.8)
     if np.sum(Tom_mask) > rectangle_dimensions[0] * rectangle_dimensions[1] * 0.7:
         play_Tom(0.8)
     if np.sum(Ride_mask) > rectangle_dimensions[0] * rectangle_dimensions[1] * 0.7:
         play_Ride(0.8)
+
+def get_centre_point(mask, edges_pt1):
+    contours = cv2.findContours(mask, 0, 2)
+
+    c = contours[0]
+    M = cv2.moments(c)
+    if (M['m00'] != 0):
+        cx = int(M['m10']/M['m00'])
+        cy = int(M['m01']/M['m00'])
+        cx = cx + edges_pt1[0]
+        cy = cy + edges_pt1[1]
+        return cx, cy
+
 
 while(True):
     # Capture frame-by-frame
@@ -120,18 +159,12 @@ while(True):
     check_strike(HiHat_mask, Snare_mask, Tom_mask, Ride_mask)
 
 
-    #########################3
-    contours = cv2.findContours(HiHat_mask, 0, 2)
+    #########################
 
-    c = contours[0]
-    M = cv2.moments(c)
-    if (M['m00'] != 0):
-        cx = int(M['m10']/M['m00'])
-        cy = int(M['m01']/M['m00'])
-        cx = cx + Hihat_edges_pt1[0]
-        cy = cy + Hihat_edges_pt1[1]
+    HiHat_pnt = get_centre_point(HiHat_mask, Hihat_edges_pt1)
+    
 
-        cv2.circle(frame, (cx,cy), 10, (0, 255, 0),thickness=1, lineType=8, shift=0)
+    cv2.circle(frame, HiHat_pnt, 10, (0, 255, 0),thickness=3, lineType=8, shift=0)
 
     #######################
 
