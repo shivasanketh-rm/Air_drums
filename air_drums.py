@@ -20,13 +20,23 @@ Ride_music = pygame.mixer.Sound("../resources/Ride.wav")
 #Snare Middle left
 #Tom-5 Middle Right
 #Ride Right
-Hihat_centre = (100, 300)
-Snare_centre = (250, 400)
-Tom5_centre = (400, 400)
-Ride_centre = (550, 300)
+Hihat_centre = (100, 200)
+Snare_centre = (250, 100)
+Tom5_centre = (400, 100)
+Ride_centre = (550, 200)
 
 rectangle_dimensions = (100, 100)
 extended_rectangle_dimensions = (125, 125)
+
+HiHat_currently_struck = False
+HiHat_music_played = False
+Snare_currently_struck = False
+Snare_music_played = False
+Tom_currently_struck = False
+Tom_music_played = False
+Ride_currently_struck = False
+Ride_music_played = False
+
 Hihat_edges_pt1 = (int(Hihat_centre[0] - rectangle_dimensions[0]/2), int(Hihat_centre[1] - rectangle_dimensions[1]/2))
 Hihat_edges_pt2 = (int(Hihat_centre[0] + rectangle_dimensions[0]/2), int(Hihat_centre[1] + rectangle_dimensions[1]/2))
 
@@ -57,6 +67,14 @@ def draw_rectangles(frame):
     cv2.rectangle(frame, Snare_edges_pt1, Snare_edges_pt2, (0,255,0), thickness=1, lineType=8, shift=0 )
     cv2.rectangle(frame, Tom5_edges_pt1, Tom5_edges_pt2, (0,255,0), thickness=1, lineType=8, shift=0 )
     cv2.rectangle(frame, Ride_edges_pt1, Ride_edges_pt2, (0,255,0), thickness=1, lineType=8, shift=0 )    
+    return frame
+
+def draw_circles(frame, HiHat_pnt,  Snare_pnt, Tom_pnt, Ride_pnt ):
+    cv2.circle(frame, HiHat_pnt, 10, (0, 255, 0),thickness=3, lineType=8, shift=0)
+    cv2.circle(frame, Snare_pnt, 10, (0, 255, 0),thickness=3, lineType=8, shift=0)
+    cv2.circle(frame, Tom_pnt, 10, (0, 255, 0),thickness=3, lineType=8, shift=0)
+    cv2.circle(frame, Ride_pnt, 10, (0, 255, 0),thickness=3, lineType=8, shift=0)
+    return frame
 
 def draw_instruments(frame):
 
@@ -87,10 +105,10 @@ def find_range(range_frame):
     return mask
 
 def find_overlap(frame):
-    HiHat_frame = np.copy(frame[Hihat_edges_pt1[1]:Hihat_edges_pt2[1],Hihat_edges_pt1[0]:Hihat_edges_pt2[0]])
-    Snare_frame = np.copy(frame[Snare_edges_pt1[1]:Snare_edges_pt2[1],Snare_edges_pt1[0]:Snare_edges_pt2[0]])
-    Tom_frame = np.copy(frame[Tom5_edges_pt1[1]:Tom5_edges_pt2[1],Tom5_edges_pt1[0]:Tom5_edges_pt2[0]])
-    Ride_frame = np.copy(frame[Ride_edges_pt1[1]:Ride_edges_pt2[1],Ride_edges_pt1[0]:Ride_edges_pt2[0]])
+    HiHat_frame = np.copy(frame[extended_Hihat_edges_pt1[1]:extended_Hihat_edges_pt2[1],extended_Hihat_edges_pt1[0]:extended_Hihat_edges_pt2[0]])
+    Snare_frame = np.copy(frame[extended_Snare_edges_pt1[1]:extended_Snare_edges_pt2[1],extended_Snare_edges_pt1[0]:extended_Snare_edges_pt2[0]])
+    Tom_frame = np.copy(frame[extended_Tom5_edges_pt1[1]:extended_Tom5_edges_pt2[1],extended_Tom5_edges_pt1[0]:extended_Tom5_edges_pt2[0]])
+    Ride_frame = np.copy(frame[extended_Ride_edges_pt1[1]:extended_Ride_edges_pt2[1],extended_Ride_edges_pt1[0]:extended_Ride_edges_pt2[0]])
 
     HiHat_mask = find_range(HiHat_frame)
     Snare_mask = find_range(Snare_frame)
@@ -115,8 +133,18 @@ def play_Ride(volume):
     Ride_music.set_volume(volume)
     Ride_music.play()
 
-currently_struck = False
+def get_centre_point(mask, edges_pt1):
+    contours = cv2.findContours(mask, 0, 2)
 
+    c = contours[0]
+    M = cv2.moments(c)
+    if (M['m00'] != 0):
+        cx = int(M['m10']/M['m00'])
+        cy = int(M['m01']/M['m00'])
+        cx = cx + edges_pt1[0]
+        cy = cy + edges_pt1[1]
+        return cx, cy
+'''
 def check_strike(HiHat_mask, Snare_mask, Tom_mask, Ride_mask):
     global currently_struck
     if np.sum(HiHat_mask) > rectangle_dimensions[0] * rectangle_dimensions[1] * 0.7:
@@ -133,41 +161,98 @@ def check_strike(HiHat_mask, Snare_mask, Tom_mask, Ride_mask):
     if np.sum(Tom_mask) > rectangle_dimensions[0] * rectangle_dimensions[1] * 0.7:
         play_Tom(0.8)
     if np.sum(Ride_mask) > rectangle_dimensions[0] * rectangle_dimensions[1] * 0.7:
+        play_Ride(0.8)'''
+
+def check_inner_rectangle(Centre_pnt, edges_pt1, edges_pt2):
+    if Centre_pnt[0] > edges_pt1[0] and Centre_pnt[0] < edges_pt2[0] \
+        and Centre_pnt[1] > edges_pt1[1] and Centre_pnt[1] < edges_pt2[1]:
+        return True 
+    return False
+
+def play_music(drum):
+    if drum == "HiHat":
+        play_HiHat(0.8)
+    if drum == "Snare":
+        play_Snare (0.8)
+    if drum == "Tom":
+        play_Tom(0.8)
+    if drum == "Ride":
         play_Ride(0.8)
 
-def get_centre_point(mask, edges_pt1):
-    contours = cv2.findContours(mask, 0, 2)
 
-    c = contours[0]
-    M = cv2.moments(c)
-    if (M['m00'] != 0):
-        cx = int(M['m10']/M['m00'])
-        cy = int(M['m01']/M['m00'])
-        cx = cx + edges_pt1[0]
-        cy = cy + edges_pt1[1]
-        return cx, cy
+
+def check_strike_position(Centre_pnt, edges_pt1, edges_pt2, drum, music_played):
+    if check_inner_rectangle(Centre_pnt, edges_pt1, edges_pt2):
+        play_music(drum)
+        music_played = True
+    return music_played
 
 
 while(True):
     # Capture frame-by-frame
     ret, frame = cap.read()
-
-    #draw_rectangles(frame)
-    frame = draw_instruments(frame)
+    frame = cv2.flip( frame, 1 )
+    
     
     HiHat_mask, Snare_mask, Tom_mask, Ride_mask = find_overlap(frame)
-    check_strike(HiHat_mask, Snare_mask, Tom_mask, Ride_mask)
+    #check_strike(HiHat_mask, Snare_mask, Tom_mask, Ride_mask)
 
 
     #########################
-
     HiHat_pnt = get_centre_point(HiHat_mask, Hihat_edges_pt1)
+    Snare_pnt = get_centre_point(Snare_mask, Snare_edges_pt1)
+    Tom_pnt = get_centre_point(Tom_mask, Tom5_edges_pt1)
+    Ride_pnt = get_centre_point(Ride_mask, Ride_edges_pt1)
+
     
 
-    cv2.circle(frame, HiHat_pnt, 10, (0, 255, 0),thickness=3, lineType=8, shift=0)
+    if HiHat_pnt:
+        if HiHat_currently_struck == True and HiHat_music_played == True:
+            pass
+        else:
+            HiHat_music_played = check_strike_position(HiHat_pnt, Hihat_edges_pt1, Hihat_edges_pt2, "HiHat", HiHat_music_played )
+            HiHat_currently_struck = True
+    else:
+        HiHat_currently_struck = False
+        HiHat_music_played = False
+
+    if Snare_pnt:
+        if Snare_currently_struck == True and Snare_music_played == True:
+            pass
+        else:
+            Snare_music_played = check_strike_position(Snare_pnt, Snare_edges_pt1, Snare_edges_pt2, "Snare", Snare_music_played )
+            Snare_currently_struck = True
+    else:
+        Snare_currently_struck = False
+        Snare_music_played = False
+
+    if Tom_pnt:
+        if Tom_currently_struck == True and Tom_music_played == True:
+            pass
+        else:
+            Tom_music_played = check_strike_position(Tom_pnt, Tom5_edges_pt1, Tom5_edges_pt2, "Tom", Tom_music_played )
+            Tom_currently_struck = True
+    else:
+        Tom_currently_struck = False
+        Tom_music_played = False
+
+    if Ride_pnt:
+        if Ride_currently_struck == True and Ride_music_played == True:
+            pass
+        else:
+            Ride_music_played = check_strike_position(Ride_pnt, Ride_edges_pt1, Ride_edges_pt2, "Ride", Ride_music_played )
+            Ride_currently_struck = True
+    else:
+        Ride_currently_struck = False
+        Ride_music_played = False
+
+
+
 
     #######################
-
+    #frame = draw_rectangles(frame)
+    frame = draw_circles(frame, HiHat_pnt,  Snare_pnt, Tom_pnt, Ride_pnt )
+    frame = draw_instruments(frame)
     
     # Display the resulting frame
     cv2.imshow('air-drums',frame)
